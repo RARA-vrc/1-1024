@@ -7,211 +7,490 @@
   <meta name="theme-color" content="#0c0c0c" />
   <style>
     :root{
-      --bg:#0c0c0c; --fg:#f5f5f5; --muted:#bdbdbd;
-      --border:#232323;
-      --accent:#2dd4bf; --danger:#ef4444; --gold:#ffe08a;
+      --bg:#0c0c0c; --fg:#f5f5f5; --muted:#bdbdbd; --border:#232323;
+      --accent:#2dd4bf; --danger:#ef4444; --glow: 0 0 36px rgba(255,255,255,.12);
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body{
       height:100%; margin:0; background:var(--bg); color:var(--fg);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
     }
-    .app{ min-height:100svh; display:grid; grid-template-rows:auto auto 1fr auto;
+    .app{
+      min-height:100svh; display:grid; grid-template-rows:auto auto 1fr auto;
       gap:10px; padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px);
-      user-select:none; touch-action:manipulation; }
-
-    .hud{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; }
-    .title{ font-weight:800; }
-    .chip{ border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:14px; color:var(--muted); white-space:nowrap; }
-    .chips{ display:flex; gap:8px; flex-wrap:wrap; }
-
-    .center{ display:grid; place-items:center; text-align:center; gap:10px; }
-    .prob{ font-size: clamp(32px, 18vw, 124px); font-weight:900; }
-    .info,.goal{ color:var(--muted); }
-
-    .bigBtn{
-      width:100%; height:min(60vh,60svh);
-      border-radius:20px; border:2px solid var(--border);
-      background: radial-gradient(180% 140% at 80% -10%, #252525 0%, #181818 40%, #131313 70%, #101010 100%);
-      color:var(--fg); display:grid; place-items:center;
-      font-size: clamp(28px, 8vw, 44px); font-weight:900;
-      cursor:pointer;
+      user-select:none; touch-action:manipulation;
     }
-    .bigBtn:active{ transform:translateY(1px) scale(.998); filter:brightness(1.02); }
 
-    .footer{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-    .btn{ border:1px solid var(--border); background:#131313; color:var(--fg);
-      padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer; }
+    /* ===== HUD ===== */
+    .hud{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; font-variant-numeric:tabular-nums; }
+    .title{ font-weight:900; letter-spacing:.02em; }
+    .chip{ border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:14px; color:var(--muted); white-space:nowrap; }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
-    .flash-ok{ animation: ok 160ms ease; }  .flash-ng{ animation: ng 180ms ease; }
-    @keyframes ok{ 50%{ box-shadow:0 0 0 6px rgba(45,212,191,.22), 0 0 60px 10px rgba(45,212,191,.18);} }
-    @keyframes ng{ 50%{ box-shadow:0 0 0 6px rgba(239,68,68,.22), 0 0 60px 10px rgba(239,68,68,.18);} }
+    /* ===== 中央表示 ===== */
+    .center{ display:grid; place-items:center; text-align:center; gap:12px; }
+    .prob{ font-size: clamp(36px, 22vw, 140px); font-weight:1000; letter-spacing:.02em; line-height:1.02; text-shadow: var(--glow); }
+    .info{ color:var(--muted); font-size: clamp(13px, 4.5vw, 18px); }
+    .goal{ color:var(--muted); font-size: clamp(12px, 4vw, 16px); }
 
+    /* ===== 巨大ボタン：視認性＆押しやすさ強化 ===== */
+    .bigBtn{
+      position:relative;
+      width:100%; height:min(66vh,66svh);
+      border-radius:24px; border:2px solid var(--border);
+      background:
+        radial-gradient(160% 200% at 50% -40%, #3a3a3a 0%, #242424 45%, #171717 75%, #121212 100%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,0));
+      color:var(--fg); display:grid; place-items:center;
+      font-size: clamp(34px, 10vw, 54px); font-weight:1000; letter-spacing:.08em;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+      transition: transform .02s ease, filter .08s ease, box-shadow .12s ease, border-color .12s ease;
+      cursor:pointer; overflow:hidden; margin-top:6px;
+    }
+    .bigBtn:active{ transform: translateY(1px) scale(.998); filter:brightness(1.03); }
+    .bigBtn:focus-visible{ outline: none; box-shadow: 0 0 0 4px rgba(45,212,191,.35); }
+    .bigBtn .label{ text-shadow: 0 2px 10px rgba(0,0,0,.45), 0 0 30px rgba(255,255,255,.15); }
+
+    /* リップル（毎タップの光） */
+    .rip{
+      position:absolute; left:0; top:0; width:32px; height:32px; border-radius:50%;
+      pointer-events:none; transform:translate(-50%,-50%) scale(0);
+      background: radial-gradient(circle, rgba(255,255,255,.9), rgba(255,255,255,.35) 40%, rgba(255,255,255,0) 60%);
+      mix-blend-mode: screen; opacity:.9;
+      animation: ripple .55s ease-out forwards;
+    }
+    @keyframes ripple{ to{ transform:translate(-50%,-50%) scale(22); opacity:0; } }
+
+    /* 成功/失敗のグロー（外周が光る） */
+    .flash-ok{ animation: ok 200ms ease; }
+    .flash-ng{ animation: ng 220ms ease; }
+    @keyframes ok{ 50%{ box-shadow: 0 0 0 10px rgba(45,212,191,.22), 0 0 80px 16px rgba(45,212,191,.18);} }
+    @keyframes ng{ 50%{ box-shadow: 0 0 0 10px rgba(239,68,68,.22), 0 0 80px 16px rgba(239,68,68,.18);} }
+
+    /* ===== フッター ===== */
+    .footer{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .btn{ border:1px solid var(--border); background:#131313; color:var(--fg); padding:10px 14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; }
+    .btn:active{ transform: translateY(1px); }
+
+    /* ===== 勝利オーバーレイ（既存のゴージャス演出） ===== */
     .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50; }
     .overlay.show{ display:flex; }
-    .backdrop{ position:absolute; inset:0;
+    .backdrop{
+      position:absolute; inset:0;
       background: radial-gradient(100% 130% at 50% 0%, rgba(0,0,0,.3), rgba(0,0,0,.85)),
-                  conic-gradient(from 180deg at 50% 50%, #0b132b, #1c2541, #3a506b, #5bc0be, #a5ffd6, #0b132b); }
-    .modal{ position:relative; z-index:1; width:min(780px, 92vw); background:rgba(10,10,10,.9);
-      border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:18px; text-align:center; }
-    .trophy{ font-size:clamp(26px, 8vw, 36px); font-weight:900; background:linear-gradient(90deg,#fff,#ffe08a,#fff);
-      -webkit-background-clip:text; color:transparent; }
-    canvas.fx{ position:absolute; inset:0; pointer-events:none; z-index:0; }
+                  conic-gradient(from 180deg at 50% 50%, #0b132b, #1c2541, #3a506b, #5bc0be, #a5ffd6, #0b132b);
+      filter:saturate(1.2) brightness(.9);
+    }
+    .modal{
+      position:relative; z-index:1; width:min(780px, 92vw);
+      background: linear-gradient(180deg, rgba(16,16,16,.92), rgba(10,10,10,.88));
+      border:1px solid rgba(255,255,255,.1); border-radius:20px; padding:18px; text-align:center;
+      box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 120px rgba(255,255,255,.08) inset;
+    }
+    .trophy{
+      font-size: clamp(26px, 8vw, 36px);
+      background: linear-gradient(90deg, #fff, #ffe08a, #fff);
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      text-shadow: 0 0 20px rgba(255,224,138,.15); font-weight:900;
+      animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer{ 0%{filter:hue-rotate(0)} 100%{filter:hue-rotate(360deg)} }
+    .stats{ color:var(--muted); margin:6px 0 10px; font-variant-numeric:tabular-nums; }
+    .actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+
+    canvas.fx{ position:absolute; inset:0; pointer-events:none; z-index:0; filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); }
+    @media (prefers-reduced-motion: reduce){
+      .rip{ animation-duration:.01ms; }
+      .flash-ok, .flash-ng{ animation-duration:.01ms; }
+    }
   </style>
 </head>
 <body>
   <div class="app" id="app">
+    <!-- HUD -->
     <div class="hud">
       <div class="title">1/1024</div>
       <div class="chip" id="globalTaps">総タップ: —</div>
       <div class="chip" id="online">同時プレイ: —</div>
     </div>
-    <div class="chips">
+
+    <!-- ローカル統計 -->
+    <div class="chips" id="localStats">
       <div class="chip" id="localAttempts">試行: 0</div>
       <div class="chip" id="localFails">失敗: 0</div>
       <div class="chip" id="localClear1024">1/1024達成: 0</div>
       <div class="chip" id="localClear4096">1/4096達成: 0</div>
       <div class="chip" id="bestChip">自己ベスト: 1/2</div>
     </div>
+
+    <!-- 中央表示 -->
     <div class="center">
       <div class="prob" id="prob">1 / 2</div>
       <div class="info" id="info">連続成功: 0｜現在の一発確率: 1/2</div>
       <div class="goal" id="goal">ターゲット: 1/1024（メイン）</div>
-      <button class="bigBtn" id="tryBtn">タップ</button>
+
+      <!-- 巨大ボタン -->
+      <button class="bigBtn" id="tryBtn" aria-label="タップ">
+        <span class="label">タップ</span>
+      </button>
     </div>
+
+    <!-- 下部操作 -->
     <div class="footer">
-      <button class="btn" id="resetBtn">↻ リセット</button>
-      <div>
+      <button class="btn" id="resetBtn">↻ リセット（現在の挑戦のみ）</button>
+      <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn" id="soundBtn">🔊 効果音: ON</button>
         <button class="btn" id="vibeBtn">📳 バイブ: ON</button>
       </div>
     </div>
   </div>
 
+  <!-- 1/1024 クリア -->
   <div class="overlay" id="winMain">
-    <div class="backdrop"></div><canvas class="fx" id="fxMain"></canvas>
+    <div class="backdrop"></div>
+    <canvas class="fx" id="fxMain"></canvas>
     <div class="modal">
       <div class="trophy">CLEAR! 1/1024 達成</div>
-      <div class="stats" id="winMainStats"></div>
-      <button class="btn" id="goBonus">🎯 続けて 1/4096 へ</button>
+      <div class="stats" id="winMainStats">総タップ: 0｜連続成功: 10</div>
+      <div class="actions">
+        <button class="btn" id="goBonus">🎯 続けて 1/4096 へ</button>
+        <button class="btn" id="shareMain">🔗 結果を共有</button>
+      </div>
     </div>
   </div>
+
+  <!-- 1/4096 クリア -->
   <div class="overlay" id="winUltra">
-    <div class="backdrop"></div><canvas class="fx" id="fxUltra"></canvas>
+    <div class="backdrop"></div>
+    <canvas class="fx" id="fxUltra"></canvas>
     <div class="modal">
       <div class="trophy">ULTRA CLEAR! 1/4096 達成</div>
-      <div class="stats" id="winUltraStats"></div>
-      <button class="btn" id="again">↺ もう一度</button>
+      <div class="stats" id="winUltraStats">総タップ: 0｜連続成功: 12</div>
+      <div class="actions">
+        <button class="btn" id="again">↺ もう一度（最初から）</button>
+        <button class="btn" id="shareUltra">🔗 結果を共有</button>
+      </div>
     </div>
   </div>
 
   <script type="module">
-    const TARGET_MAIN=10, TARGET_BONUS=12;
-    let attempts=0, streak=0, inBonus=false;
-    let localAttempts=+localStorage.localAttempts||0,
-        localFails=+localStorage.localFails||0,
-        localClear1024=+localStorage.localClear1024||0,
-        localClear4096=+localStorage.localClear4096||0,
-        bestPow=+localStorage.bestPow||1;
-    let soundOn=(localStorage.soundOn??'1')==='1',
-        vibeOn=(localStorage.vibeOn??'1')==='1';
+    /* ====== 定数 ====== */
+    const TARGET_MAIN = 10;   // 1/1024
+    const TARGET_BONUS = 12;  // 1/4096
+    const BTN = document.getElementById('tryBtn');
 
-    const probEl=document.getElementById('prob'),
-          infoEl=document.getElementById('info'),
-          goalEl=document.getElementById('goal'),
-          localAttemptsEl=document.getElementById('localAttempts'),
-          localFailsEl=document.getElementById('localFails'),
-          localClear1024El=document.getElementById('localClear1024'),
-          localClear4096El=document.getElementById('localClear4096'),
-          bestChipEl=document.getElementById('bestChip'),
-          globalTapsEl=document.getElementById('globalTaps'),
-          onlineEl=document.getElementById('online');
+    /* ====== 状態 ====== */
+    let attempts = 0;     // ラウンド内クリック
+    let streak = 0;       // 連続成功
+    let inBonus = false;  // メイン超過フラグ
 
-    function updateUI(){
-      const t=inBonus?TARGET_BONUS:TARGET_MAIN;
-      const next=Math.min(streak+1,t), denom=2**next;
-      probEl.textContent=`1 / ${denom}`;
-      infoEl.textContent=`連続成功: ${streak}｜現在の一発確率: 1/${denom}`;
-      goalEl.textContent=`ターゲット: ${inBonus?'1/4096':'1/1024'}`;
-      localAttemptsEl.textContent=`試行: ${localAttempts}`;
-      localFailsEl.textContent=`失敗: ${localFails}`;
-      localClear1024El.textContent=`1/1024達成: ${localClear1024}`;
-      localClear4096El.textContent=`1/4096達成: ${localClear4096}`;
-      bestChipEl.textContent=`自己ベスト: 1/${2**bestPow}`;
+    // ローカル累積（永続）
+    let localAttempts  = Number(localStorage.getItem('localAttempts')  || 0);
+    let localFails     = Number(localStorage.getItem('localFails')     || 0);
+    let localClear1024 = Number(localStorage.getItem('localClear1024') || 0);
+    let localClear4096 = Number(localStorage.getItem('localClear4096') || 0);
+    let bestPow        = Number(localStorage.getItem('bestPow')        || 1); // 最小分母=2^bestPow
+
+    let soundOn = (localStorage.getItem('soundOn') ?? '1') === '1';
+    let vibeOn  = (localStorage.getItem('vibeOn')  ?? '1') === '1';
+
+    /* ====== DOM ====== */
+    const probEl   = document.getElementById('prob');
+    const infoEl   = document.getElementById('info');
+    const goalEl   = document.getElementById('goal');
+    const resetBtn = document.getElementById('resetBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const vibeBtn  = document.getElementById('vibeBtn');
+
+    const globalTapsEl = document.getElementById('globalTaps');
+    const onlineEl     = document.getElementById('online');
+
+    const localAttemptsEl  = document.getElementById('localAttempts');
+    const localFailsEl     = document.getElementById('localFails');
+    const localClear1024El = document.getElementById('localClear1024');
+    const localClear4096El = document.getElementById('localClear4096');
+    const bestChipEl       = document.getElementById('bestChip');
+
+    const winMain = document.getElementById('winMain');
+    const winMainStats = document.getElementById('winMainStats');
+    const goBonus = document.getElementById('goBonus');
+    const shareMain = document.getElementById('shareMain');
+    const fxMain = document.getElementById('fxMain');
+
+    const winUltra = document.getElementById('winUltra');
+    const winUltraStats = document.getElementById('winUltraStats');
+    const again = document.getElementById('again');
+    const shareUltra = document.getElementById('shareUltra');
+    const fxUltra = document.getElementById('fxUltra');
+
+    /* ====== オーディオ：確実に鳴らす ====== */
+    let audioCtx = null, audioUnlocked = false;
+    function ensureAudio(){
+      if (!soundOn) return;
+      if (!audioCtx){
+        try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioCtx=null; }
+      }
+    }
+    async function unlockAudio(){
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') { try{ await audioCtx.resume(); }catch(_){} }
+      audioUnlocked = true;
+    }
+    function beep(freq=880, ms=90, type='sine', gainMax=0.28){
+      if (!soundOn || !audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      osc.connect(g).connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gainMax, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + ms/1000);
+      osc.start(t0);
+      osc.stop(t0 + ms/1000 + 0.04);
+    }
+    // タップ即クリック音（短く高い音）
+    function tapClick(){
+      if (!soundOn || !audioCtx) return;
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(2800, t0);
+      osc.connect(g).connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.18, t0 + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+      osc.start(t0);
+      osc.stop(t0 + 0.08);
     }
 
-    function fairCoin(){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]<0x80000000;}
-    function judge(){
-      attempts++; localAttempts++; localStorage.localAttempts=localAttempts;
-      const ok=fairCoin();
+    /* ====== 乱数（厳密な1/2） ====== */
+    function fairCoin(){
+      if (window.crypto && crypto.getRandomValues){
+        const a = new Uint32Array(1); crypto.getRandomValues(a);
+        return (a[0] >>> 0) < 0x80000000; // 2^31
+      }
+      return Math.random() < 0.5; // フォールバック
+    }
+
+    /* ====== 表示更新 ====== */
+    const pow2 = n => 2 ** n;
+    function updateLocalChips(){
+      localAttemptsEl.textContent  = `試行: ${localAttempts}`;
+      localFailsEl.textContent     = `失敗: ${localFails}`;
+      localClear1024El.textContent = `1/1024達成: ${localClear1024}`;
+      localClear4096El.textContent = `1/4096達成: ${localClear4096}`;
+      bestChipEl.textContent       = `自己ベスト: 1/${pow2(Math.max(bestPow,1))}`;
+    }
+    function updateUI(){
+      const target = inBonus ? TARGET_BONUS : TARGET_MAIN;
+      const nextPow = Math.min(streak + 1, target);
+      const denom = pow2(nextPow);
+      probEl.textContent = `1 / ${denom}`;
+      infoEl.textContent = `連続成功: ${streak}｜現在の一発確率: 1/${denom}`;
+      goalEl.textContent = `ターゲット: ${inBonus ? '1/4096（ボーナス）' : '1/1024（メイン）'}`;
+      soundBtn.textContent = `🔊 効果音: ${soundOn ? 'ON' : 'OFF'}`;
+      vibeBtn.textContent  = `📳 バイブ: ${vibeOn ? 'ON' : 'OFF'}`;
+      document.title = (streak>0?`連続${streak} ▶ `:'') + '1/1024';
+      updateLocalChips();
+    }
+
+    /* ====== ビジュアル：リップル生成とグロー ====== */
+    function spawnRipple(e){
+      const rect = BTN.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      const s = document.createElement('span');
+      s.className = 'rip';
+      s.style.left = x + 'px';
+      s.style.top  = y + 'px';
+      BTN.appendChild(s);
+      s.addEventListener('animationend', ()=> s.remove());
+    }
+    function flash(ok){
+      BTN.classList.remove('flash-ok','flash-ng');
+      void BTN.offsetWidth; // reflow
+      BTN.classList.add(ok ? 'flash-ok' : 'flash-ng');
+    }
+
+    /* ====== 判定 ====== */
+    function judgeOnce(pointerEvent){
+      // UI/Audio 事前準備
+      ensureAudio(); unlockAudio(); // iOS対策
+      tapClick();                   // タップ即音
+      spawnRipple(pointerEvent);    // 光るリップル
+
+      // 記録
+      attempts++; localAttempts++; localStorage.setItem('localAttempts', String(localAttempts));
+      incrementGlobalTapCount(); // オンライン時のみ
+
+      // 判定
+      const ok = fairCoin();
       if(ok){
         streak++;
-        if(!inBonus&&streak>=TARGET_MAIN){localClear1024++;localStorage.localClear1024=localClear1024;bestPow=Math.max(bestPow,TARGET_MAIN);localStorage.bestPow=bestPow;document.getElementById('winMain').classList.add('show');}
-        if(inBonus&&streak>=TARGET_BONUS){localClear4096++;localStorage.localClear4096=localClear4096;bestPow=Math.max(bestPow,TARGET_BONUS);localStorage.bestPow=bestPow;document.getElementById('winUltra').classList.add('show');}
-      }else{streak=0;localFails++;localStorage.localFails=localFails;}
-      bestPow=Math.max(bestPow,Math.min(streak,TARGET_BONUS));
-      localStorage.bestPow=bestPow;updateUI();incrementGlobalTap();
-    }
+        if(vibeOn && navigator.vibrate) navigator.vibrate(15);
+        beep(920 + streak*14, 80, 'triangle', 0.26); // 成功音
+        flash(true);
 
-    document.getElementById('tryBtn').onclick=()=>judge();
-    document.getElementById('resetBtn').onclick=()=>{attempts=0;streak=0;inBonus=false;updateUI();};
-    document.getElementById('goBonus').onclick=()=>{document.getElementById('winMain').classList.remove('show');inBonus=true;};
-    document.getElementById('again').onclick=()=>{document.getElementById('winUltra').classList.remove('show');attempts=0;streak=0;inBonus=false;updateUI();};
-
-    // === Firebase ===
-    let db,myUID;
-    async function initFirebase(){
-      const firebaseConfig={
-        apiKey:"AIzaSyDtdpDv3rduha4z6OGkQrRYCMNDuKcVBLk",
-        authDomain:"project-4739003489934004266.firebaseapp.com",
-        projectId:"project-4739003489934004266",
-        storageBucket:"project-4739003489934004266.firebasestorage.app",
-        messagingSenderId:"599571252669",
-        appId:"1:599571252669:web:7e321aacd113b5df4dfed4",
-        measurementId:"G-VW1NRCTKWR",
-        databaseURL:"https://project-4739003489934004266-default-rtdb.asia-southeast1.firebasedatabase.app"
-      };
-      const [{initializeApp},{getAuth,signInAnonymously,onAuthStateChanged},{getDatabase,ref,onValue,push,set,onDisconnect,serverTimestamp,runTransaction}] =
-        await Promise.all([
-          import('https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js'),
-          import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js'),
-          import('https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js')
-        ]);
-      const app=initializeApp(firebaseConfig);
-      db=getDatabase(app);
-      const auth=getAuth(app);
-      await signInAnonymously(auth);
-      onAuthStateChanged(auth,(user)=>{
-        if(!user)return; myUID=user.uid; setupPresence(ref,onValue,push,set,onDisconnect,serverTimestamp); subscribeTaps(ref,onValue);
-      });
-      window.__rtdbRunTransaction=(p,u)=>runTransaction(ref(db,p),u);
-    }
-
-    function setupPresence(ref,onValue,push,set,onDisconnect,serverTimestamp){
-      const cRef=ref(db,'.info/connected');
-      onValue(cRef,(s)=>{
-        if(s.val()===true&&myUID){
-          const con=push(ref(db,'presence/'+myUID));
-          onDisconnect(con).remove(); set(con,serverTimestamp());
+        if(!inBonus && streak>=TARGET_MAIN){
+          localClear1024++; localStorage.setItem('localClear1024', String(localClear1024));
+          bestPow = Math.max(bestPow, TARGET_MAIN); localStorage.setItem('bestPow', String(bestPow));
+          showWinMain(); updateUI(); return;
         }
-      });
-      onValue(ref(db,'presence'),(snap)=>{
-        let unique=0;const v=snap.val()||{};
-        for(const uid in v){if(Object.keys(v[uid]||{}).length>0)unique++;}
-        onlineEl.textContent=`同時プレイ: ${unique}`;
-      });
-    }
-    function subscribeTaps(ref,onValue){
-      onValue(ref(db,'stats/tapCount'),(snap)=>{
-        globalTapsEl.textContent=`総タップ: ${snap.val()||0}`;
-      });
-    }
-    async function incrementGlobalTap(){
-      if(!window.__rtdbRunTransaction)return;
-      await window.__rtdbRunTransaction('stats/tapCount',(n)=>(n||0)+1);
+        if(inBonus && streak>=TARGET_BONUS){
+          localClear4096++; localStorage.setItem('localClear4096', String(localClear4096));
+          bestPow = Math.max(bestPow, TARGET_BONUS); localStorage.setItem('bestPow', String(bestPow));
+          showWinUltra(); updateUI(); return;
+        }
+      }else{
+        localFails++; localStorage.setItem('localFails', String(localFails));
+        if(vibeOn && navigator.vibrate) navigator.vibrate([10,30,60]);
+        beep(180, 120, 'sawtooth', 0.24);           // 失敗音
+        flash(false);
+        streak = 0;
+      }
+      bestPow = Math.max(bestPow, Math.min(streak, TARGET_BONUS));
+      localStorage.setItem('bestPow', String(bestPow));
+      updateUI();
     }
 
-    updateUI(); initFirebase();
+    /* ====== 勝利演出 ====== */
+    function confetti(canvas, durationMs=4200, count=220){
+      const ctx = canvas.getContext('2d');
+      const {width:W, height:H} = canvas.getBoundingClientRect();
+      canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio);
+      const pieces = Array.from({length:count}, () => ({
+        x: Math.random()*W, y: -20 - Math.random()*H,
+        w: 6+Math.random()*7, h: 10+Math.random()*14,
+        vy: 2+Math.random()*3, vx:(Math.random()-.5)*1.2, rot:Math.random()*Math.PI, vr:(Math.random()-.5)*0.2,
+      }));
+      const colors = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#B892FF','#F6C177','#2DD4BF','#E879F9'];
+      let start = performance.now();
+      function frame(t){
+        const elapsed = t - start;
+        ctx.clearRect(0,0,W,H);
+        for(const p of pieces){
+          p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+          if(p.y > H+40) { p.y = -20; p.x = Math.random()*W; }
+          ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+          ctx.fillStyle = colors[(p.x^p.y + p.w|0) % colors.length];
+          ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          ctx.restore();
+        }
+        if(elapsed < durationMs) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+    function showWinMain(){
+      winMainStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`;
+      winMain.classList.add('show'); confetti(fxMain);
+    }
+    function showWinUltra(){
+      winUltraStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`;
+      winUltra.classList.add('show'); confetti(fxUltra, 5200, 300);
+    }
+
+    /* ====== イベント ====== */
+    BTN.addEventListener('pointerdown', e => { e.preventDefault(); judgeOnce(e); }, {passive:false});
+    resetBtn.addEventListener('click', ()=>{ attempts=0; streak=0; inBonus=false; updateUI(); });
+    soundBtn.addEventListener('click', ()=>{ soundOn=!soundOn; localStorage.setItem('soundOn', soundOn?'1':'0'); if(soundOn){ ensureAudio(); unlockAudio(); } updateUI(); });
+    vibeBtn.addEventListener('click', ()=>{ vibeOn=!vibeOn; localStorage.setItem('vibeOn', vibeOn?'1':'0'); updateUI(); });
+
+    shareMain.addEventListener('click', ()=> shareText(`1/1024 クリア！連続${streak}回`));
+    shareUltra.addEventListener('click', ()=> shareText(`1/4096 クリア！連続${streak}回`));
+    goBonus.addEventListener('click', ()=>{ winMain.classList.remove('show'); inBonus=true; updateUI(); });
+    again.addEventListener('click', ()=>{ winUltra.classList.remove('show'); attempts=0; streak=0; inBonus=false; updateUI(); });
+
+    async function shareText(text){
+      try{
+        if(navigator.share){ await navigator.share({text, url: location.href}); }
+        else{ await navigator.clipboard.writeText(text + ' ' + location.href); }
+      }catch(_){ /* noop */ }
+    }
+
+    /* ====== Firebase（CDN ESM, 匿名Auth + Realtime DB） ====== */
+    let db=null, myUID=null, onlineUnsub=null, tapsUnsub=null;
+    async function initFirebase(){
+      const firebaseConfig = {
+        apiKey: "AIzaSyDtdpDv3rduha4z6OGkQrRYCMNDuKcVBLk",
+        authDomain: "project-4739003489934004266.firebaseapp.com",
+        projectId: "project-4739003489934004266",
+        storageBucket: "project-4739003489934004266.firebasestorage.app",
+        messagingSenderId: "599571252669",
+        appId: "1:599571252669:web:7e321aacd113b5df4dfed4",
+        measurementId: "G-VW1NRCTKWR",
+        databaseURL: "https://project-4739003489934004266-default-rtdb.asia-southeast1.firebasedatabase.app"
+      };
+      try{
+        const [{ initializeApp }, { getAuth, signInAnonymously, onAuthStateChanged }, { getDatabase, ref, onValue, push, set, onDisconnect, serverTimestamp, runTransaction }] =
+          await Promise.all([
+            import('https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js'),
+            import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js'),
+            import('https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js'),
+          ]);
+        const app = initializeApp(firebaseConfig);
+        db = getDatabase(app);
+
+        // 匿名サインイン
+        const auth = getAuth(app);
+        await signInAnonymously(auth);
+        onAuthStateChanged(auth, (user) => {
+          if(!user) return;
+          myUID = user.uid;
+          setupPresence();
+          subscribeGlobalTaps();
+        });
+
+        // presence（ユニークUID人数）
+        function setupPresence(){
+          const connectedRef = ref(db, '.info/connected');
+          onValue(connectedRef, (snap) => {
+            if (snap.val() === true && myUID){
+              const conRef = push(ref(db, `presence/${myUID}`)); // タブ単位
+              onDisconnect(conRef).remove();
+              set(conRef, serverTimestamp());
+            }
+          });
+          if(onlineUnsub) onlineUnsub();
+          onlineUnsub = onValue(ref(db, 'presence'), (snap) => {
+            const val = snap.val() || {};
+            let unique = 0;
+            for(const uid in val){
+              const count = val[uid] ? Object.keys(val[uid]).length : 0;
+              if(count > 0) unique++;
+            }
+            onlineEl.textContent = `同時プレイ: ${unique}`;
+          });
+        }
+
+        // 総タップ購読
+        function subscribeGlobalTaps(){
+          if(tapsUnsub) tapsUnsub();
+          tapsUnsub = onValue(ref(db, 'stats/tapCount'), (snap) => {
+            const n = snap.val() || 0;
+            globalTapsEl.textContent = `総タップ: ${n}`;
+          });
+        }
+
+        // 原子的+1
+        window.__rtdbRunTransaction = (path, updater) => runTransaction(ref(db, path), updater);
+
+      }catch(e){
+        console.warn('Firebase 初期化に失敗（オンライン機能オフ）:', e);
+      }
+    }
+
+    // 総タップ +1
+    async function incrementGlobalTapCount(){
+      if(!window.__rtdbRunTransaction) return;
+      try{ await window.__rtdbRunTransaction('stats/tapCount', (n)=> (n||0) + 1); }catch(_){}
+    }
+
+    // 初期化
+    updateUI();
+    initFirebase();
   </script>
 </body>
 </html>
