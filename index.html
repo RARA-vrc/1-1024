@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>1/1024 チャレンジ</title>
+  <title>1/1024</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0c0c0c" />
   <style>
@@ -13,15 +13,21 @@
       --glow: 0 0 40px rgba(45,212,191,.25), 0 0 80px rgba(45,212,191,.15);
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-    html,body{ height:100%; margin:0; background:var(--bg); color:var(--fg);
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;}
-    .app{ min-height:100svh; display:grid; grid-template-rows:auto 1fr auto;
-      gap:12px; padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px); user-select:none; touch-action:manipulation;}
+    html,body{
+      height:100%; margin:0; background:var(--bg); color:var(--fg);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+    }
+    .app{
+      min-height:100svh; display:grid; grid-template-rows:auto auto 1fr auto;
+      gap:10px; padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px);
+      user-select:none; touch-action:manipulation;
+    }
 
     /* HUD */
     .hud{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; font-variant-numeric:tabular-nums; }
     .title{ font-weight:800; letter-spacing:.02em; }
     .chip{ border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:14px; color:var(--muted); white-space:nowrap; }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
     /* 中央表示 */
     .center{ display:grid; place-items:center; text-align:center; gap:10px; }
@@ -36,7 +42,7 @@
       background:
         radial-gradient(180% 140% at 80% -10%, #252525 0%, #181818 40%, #131313 70%, #101010 100%);
       color:var(--fg); display:grid; place-items:center;
-      font-size: clamp(28px, 8vw, 44px); font-weight:900; letter-spacing:.08em; text-transform: none;
+      font-size: clamp(28px, 8vw, 44px); font-weight:900; letter-spacing:.08em;
       box-shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
       transition: transform .02s ease, filter .08s ease;
       cursor:pointer;
@@ -93,11 +99,20 @@
 </head>
 <body>
   <div class="app" id="app">
-    <!-- HUD -->
+    <!-- HUD（左はシンプルに 1/1024） -->
     <div class="hud">
-      <div class="title">1/1024 チャレンジ</div>
+      <div class="title">1/1024</div>
       <div class="chip" id="globalTaps">総タップ: —</div>
       <div class="chip" id="online">同時プレイ: —</div>
+    </div>
+
+    <!-- ローカル統計（リアルタイム更新・localStorageに保存） -->
+    <div class="chips" id="localStats">
+      <div class="chip" id="localAttempts">試行: 0</div>
+      <div class="chip" id="localFails">失敗: 0</div>
+      <div class="chip" id="localClear1024">1/1024達成: 0</div>
+      <div class="chip" id="localClear4096">1/4096達成: 0</div>
+      <div class="chip" id="bestChip">自己ベスト: 1/2</div>
     </div>
 
     <!-- 中央表示 -->
@@ -107,12 +122,11 @@
       <div class="goal" id="goal">ターゲット: 1/1024（メイン）</div>
 
       <button class="bigBtn" id="tryBtn" aria-label="タップ">タップ</button>
-      <div class="info" id="best">自己ベスト: 1/2</div>
     </div>
 
     <!-- 下部操作 -->
     <div class="footer">
-      <button class="btn" id="resetBtn">↻ リセット</button>
+      <button class="btn" id="resetBtn">↻ リセット（現在の挑戦のみ）</button>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn" id="soundBtn">🔊 効果音: ON</button>
         <button class="btn" id="vibeBtn">📳 バイブ: ON</button>
@@ -159,24 +173,36 @@
     const BTN = document.getElementById('tryBtn');
 
     /* ====== 状態 ====== */
-    let attempts = 0;
-    let streak = 0;
-    let bestPow = Number(localStorage.getItem('bestPow') || 1); // 到達した最大指数（= 最小確率の段） 1..12
+    let attempts = 0;     // 現在ラウンドの総クリック
+    let streak = 0;       // 現在の連続成功
+    let inBonus = false;  // メインを超えたら true
+
+    // ローカル累積（永続）記録
+    let localAttempts = Number(localStorage.getItem('localAttempts') || 0);
+    let localFails    = Number(localStorage.getItem('localFails') || 0);
+    let localClear1024= Number(localStorage.getItem('localClear1024') || 0);
+    let localClear4096= Number(localStorage.getItem('localClear4096') || 0);
+    let bestPow       = Number(localStorage.getItem('bestPow') || 1); // 最小分母=2^bestPow
+
     let soundOn = (localStorage.getItem('soundOn') ?? '1') === '1';
     let vibeOn  = (localStorage.getItem('vibeOn')  ?? '1') === '1';
-    let inBonus = false; // メインを超えたら true
 
     /* ====== DOM ====== */
-    const probEl  = document.getElementById('prob');
-    const infoEl  = document.getElementById('info');
-    const goalEl  = document.getElementById('goal');
-    const bestEl  = document.getElementById('best');
-    const tapsEl  = document.getElementById('globalTaps');
-    const onlineEl= document.getElementById('online');
+    const probEl   = document.getElementById('prob');
+    const infoEl   = document.getElementById('info');
+    const goalEl   = document.getElementById('goal');
+    const resetBtn = document.getElementById('resetBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const vibeBtn  = document.getElementById('vibeBtn');
 
-    const resetBtn= document.getElementById('resetBtn');
-    const soundBtn= document.getElementById('soundBtn');
-    const vibeBtn = document.getElementById('vibeBtn');
+    const globalTapsEl = document.getElementById('globalTaps');
+    const onlineEl     = document.getElementById('online');
+
+    const localAttemptsEl = document.getElementById('localAttempts');
+    const localFailsEl    = document.getElementById('localFails');
+    const localClear1024El= document.getElementById('localClear1024');
+    const localClear4096El= document.getElementById('localClear4096');
+    const bestChipEl      = document.getElementById('bestChip');
 
     const winMain = document.getElementById('winMain');
     const winMainStats = document.getElementById('winMainStats');
@@ -215,8 +241,15 @@
       return Math.random() < 0.5; // フォールバック
     }
 
-    /* ====== UI 更新 ====== */
+    /* ====== 表示更新 ====== */
     const pow2 = n => 2 ** n;
+    function updateLocalChips(){
+      localAttemptsEl.textContent  = `試行: ${localAttempts}`;
+      localFailsEl.textContent     = `失敗: ${localFails}`;
+      localClear1024El.textContent = `1/1024達成: ${localClear1024}`;
+      localClear4096El.textContent = `1/4096達成: ${localClear4096}`;
+      bestChipEl.textContent       = `自己ベスト: 1/${pow2(Math.max(bestPow,1))}`;
+    }
     function updateUI(){
       const target = inBonus ? TARGET_BONUS : TARGET_MAIN;
       const nextPow = Math.min(streak + 1, target);
@@ -224,18 +257,19 @@
       probEl.textContent = `1 / ${denom}`;
       infoEl.textContent = `連続成功: ${streak}｜現在の一発確率: 1/${denom}`;
       goalEl.textContent = `ターゲット: ${inBonus ? '1/4096（ボーナス）' : '1/1024（メイン）'}`;
-      bestEl.textContent = `自己ベスト: 1/${pow2(Math.max(bestPow,1))}`;
       soundBtn.textContent = `🔊 効果音: ${soundOn ? 'ON' : 'OFF'}`;
       vibeBtn.textContent  = `📳 バイブ: ${vibeOn ? 'ON' : 'OFF'}`;
-      document.title = (streak>0?`連続${streak} ▶ `:'') + '1/1024 チャレンジ';
+      document.title = (streak>0?`連続${streak} ▶ `:'') + '1/1024';
+      updateLocalChips();
     }
     function flash(ok){ BTN.classList.remove('flash-ok','flash-ng'); void BTN.offsetWidth; BTN.classList.add(ok?'flash-ok':'flash-ng'); }
 
     /* ====== 1回判定 ====== */
     function judgeOnce(){
       attempts++;
+      localAttempts++; localStorage.setItem('localAttempts', String(localAttempts));
       ensureAudio();
-      incrementGlobalTapCount(); // グローバル総タップを+1（オンライン時のみ）
+      incrementGlobalTapCount(); // オンライン時のみ
 
       const ok = fairCoin();
       if(ok){
@@ -245,6 +279,8 @@
         flash(true);
 
         if(!inBonus && streak>=TARGET_MAIN){
+          // 1/1024 クリア
+          localClear1024++; localStorage.setItem('localClear1024', String(localClear1024));
           bestPow = Math.max(bestPow, TARGET_MAIN);
           localStorage.setItem('bestPow', String(bestPow));
           showWinMain();
@@ -252,6 +288,8 @@
           return;
         }
         if(inBonus && streak>=TARGET_BONUS){
+          // 1/4096 クリア
+          localClear4096++; localStorage.setItem('localClear4096', String(localClear4096));
           bestPow = Math.max(bestPow, TARGET_BONUS);
           localStorage.setItem('bestPow', String(bestPow));
           showWinUltra();
@@ -259,6 +297,7 @@
           return;
         }
       }else{
+        localFails++; localStorage.setItem('localFails', String(localFails));
         if(vibeOn && navigator.vibrate) navigator.vibrate([12,35,90]);
         beep(180, 120, 'sawtooth');
         flash(false);
@@ -308,7 +347,7 @@
       confetti(fxUltra, 5200, 300);
     }
 
-    /* ====== イベント設定 ====== */
+    /* ====== イベント ====== */
     BTN.addEventListener('pointerdown', e => { e.preventDefault(); judgeOnce(); }, {passive:false});
     resetBtn.addEventListener('click', ()=>{ attempts=0; streak=0; inBonus=false; updateUI(); });
     soundBtn.addEventListener('click', ()=>{ soundOn=!soundOn; localStorage.setItem('soundOn', soundOn?'1':'0'); if(soundOn) ensureAudio(); updateUI(); });
@@ -327,12 +366,12 @@
     shareUltra.addEventListener('click', ()=> shareText(`1/4096 クリア！連続${streak}回`));
 
     /* ====== Firebase（CDN ESM, 匿名Auth + Realtime Database） ====== */
-    let db=null, myUID=null, onlineCountUnsub=null, tapsUnsub=null;
+    let db=null, myUID=null, onlineUnsub=null, tapsUnsub=null;
 
     async function initFirebase(){
-      // 自前プロジェクトの設定をここに貼る（Firebaseコンソール > ウェブアプリの設定）
+      // 自前プロジェクトの設定をここに貼る（Firebaseコンソール > プロジェクト設定 > SDKスニペット）
       const firebaseConfig = {
-        // TODO: ここに自分の Firebase 設定を書く（apiKey, authDomain, databaseURL, projectId, appId など）
+        // TODO: ここに自分の Firebase 設定を書く（apiKey / authDomain / databaseURL / projectId / appId など）
         // 例:
         // apiKey: "AIzaSy....",
         // authDomain: "yourapp.firebaseapp.com",
@@ -363,23 +402,25 @@
           subscribeGlobalTaps();
         });
 
-        // presence 設定
+        // presence（ユニークUID人数を集計）
         function setupPresence(){
           const connectedRef = ref(db, '.info/connected');
           onValue(connectedRef, (snap) => {
             if (snap.val() === true && myUID){
-              const conRef = push(ref(db, `presence/${myUID}`)); // タブ単位の接続
+              const conRef = push(ref(db, `presence/${myUID}`)); // タブごとの接続ノード
               onDisconnect(conRef).remove();
               set(conRef, serverTimestamp());
             }
           });
-          // 全接続数（= 同時プレイ人数として扱う）
-          if(onlineCountUnsub) onlineCountUnsub();
-          onlineCountUnsub = onValue(ref(db, 'presence'), (snap) => {
-            let total = 0;
+          if(onlineUnsub) onlineUnsub();
+          onlineUnsub = onValue(ref(db, 'presence'), (snap) => {
             const val = snap.val() || {};
-            for(const uid in val){ total += Object.keys(val[uid] || {}).length; } // タブ数ベース
-            onlineEl.textContent = `同時プレイ: ${total}`;
+            let unique = 0;
+            for(const uid in val){
+              const count = val[uid] ? Object.keys(val[uid]).length : 0;
+              if(count > 0) unique++;
+            }
+            onlineEl.textContent = `同時プレイ: ${unique}`;
           });
         }
 
@@ -388,11 +429,11 @@
           if(tapsUnsub) tapsUnsub();
           tapsUnsub = onValue(ref(db, 'stats/tapCount'), (snap) => {
             const n = snap.val() || 0;
-            tapsEl.textContent = `総タップ: ${n}`;
+            globalTapsEl.textContent = `総タップ: ${n}`;
           });
         }
 
-        // グローバルカウンタの transaction 関数を保持
+        // グローバルカウンタの transaction を公開
         window.__rtdbRunTransaction = (path, updater) => runTransaction(ref(db, path), updater);
 
       }catch(e){
@@ -405,9 +446,7 @@
       if(!window.__rtdbRunTransaction) return;
       try{
         await window.__rtdbRunTransaction('stats/tapCount', (n)=> (n||0) + 1);
-      }catch(e){
-        // 失敗してもゲームは続行
-      }
+      }catch(e){ /* noop */ }
     }
 
     // 初期化
