@@ -8,71 +8,84 @@
   <style>
     :root{
       --bg:#0c0c0c; --fg:#f5f5f5; --muted:#bdbdbd; --border:#232323;
-      --accent:#2dd4bf; --danger:#ef4444; --glow: 0 0 36px rgba(255,255,255,.12);
+      --accent:#2dd4bf; --danger:#ef4444;
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body{
       height:100%; margin:0; background:var(--bg); color:var(--fg);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+      overflow:hidden; /* ← 縦スクロールを封じる */
     }
+
+    /* 画面全体をぴったり1画面に収める（動的vh対応） */
     .app{
-      min-height:100svh; display:grid; grid-template-rows:auto auto 1fr auto;
-      gap:10px; padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px);
+      height:100dvh; min-height:100dvh; /* iOS/Android両対応の動的ビューポート */
+      display:grid; grid-template-rows:auto auto 1fr auto; /* 中央領域が1frで伸縮 */
+      gap:8px;
+      padding: calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 10px);
       user-select:none; touch-action:manipulation;
     }
 
     /* ===== HUD ===== */
     .hud{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; font-variant-numeric:tabular-nums; }
-    .title{ font-weight:900; letter-spacing:.02em; }
-    .chip{ border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:14px; color:var(--muted); white-space:nowrap; }
-    .chips{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .title{ font-weight:900; letter-spacing:.02em; font-size: clamp(16px, 4.2vw, 20px); }
+    .chip{
+      border:1px solid var(--border); padding:5px 8px; border-radius:999px;
+      font-size: clamp(11px, 3.4vw, 13px); color:var(--muted); white-space:nowrap;
+    }
 
-    /* ===== 中央表示 ===== */
-    .center{ display:grid; place-items:center; text-align:center; gap:12px; }
-    .prob{ font-size: clamp(36px, 22vw, 140px); font-weight:1000; letter-spacing:.02em; line-height:1.02; text-shadow: var(--glow); }
-    .info{ color:var(--muted); font-size: clamp(13px, 4.5vw, 18px); }
-    .goal{ color:var(--muted); font-size: clamp(12px, 4vw, 16px); }
+    /* ===== ローカル統計（折返し／横スクロール許容） ===== */
+    .chips{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; overflow-x:auto; scrollbar-width:none; }
+    .chips::-webkit-scrollbar{ display:none; }
 
-    /* ===== 巨大ボタン：視認性＆押しやすさ強化 ===== */
+    /* ===== 中央表示：上に情報、残りをボタンで埋める ===== */
+    .center{
+      display:grid;
+      grid-template-rows: auto auto auto 1fr; /* ← 最後の1frがボタン領域 */
+      align-items:start; justify-items:center;
+      row-gap:8px; min-height:0;
+    }
+    .prob{ font-size: clamp(28px, 18vw, 100px); font-weight:1000; letter-spacing:.02em; line-height:1.02; text-align:center; }
+    .info{ color:var(--muted); font-size: clamp(12px, 3.6vw, 16px); }
+    .goal{ color:var(--muted); font-size: clamp(11px, 3.2vw, 14px); }
+
+    /* ===== 巨大ボタン：残り領域を100%使用 ===== */
+    .btnWrap{ width:100%; min-height:0; }
     .bigBtn{
       position:relative;
-      width:100%; height:min(66vh,66svh);
-      border-radius:24px; border:2px solid var(--border);
+      width:100%; height:100%; min-height:160px; /* 端末が極端に低いときの下限だけ確保 */
+      border-radius:22px; border:2px solid var(--border);
       background:
         radial-gradient(160% 200% at 50% -40%, #3a3a3a 0%, #242424 45%, #171717 75%, #121212 100%),
         linear-gradient(180deg, rgba(255,255,255,.06), rgba(0,0,0,0));
       color:var(--fg); display:grid; place-items:center;
-      font-size: clamp(34px, 10vw, 54px); font-weight:1000; letter-spacing:.08em;
+      font-size: clamp(28px, 9vw, 44px); font-weight:1000; letter-spacing:.08em;
       box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
-      transition: transform .02s ease, filter .08s ease, box-shadow .12s ease, border-color .12s ease;
-      cursor:pointer; overflow:hidden; margin-top:6px;
+      transition: transform .02s ease, filter .08s ease, box-shadow .12s ease;
+      cursor:pointer; overflow:hidden; margin-top:4px;
+      touch-action:none; /* ← ボタン上での縦スクロールを無効化 */
     }
     .bigBtn:active{ transform: translateY(1px) scale(.998); filter:brightness(1.03); }
-    .bigBtn:focus-visible{ outline: none; box-shadow: 0 0 0 4px rgba(45,212,191,.35); }
     .bigBtn .label{ text-shadow: 0 2px 10px rgba(0,0,0,.45), 0 0 30px rgba(255,255,255,.15); }
-
-    /* リップル（毎タップの光） */
     .rip{
       position:absolute; left:0; top:0; width:32px; height:32px; border-radius:50%;
       pointer-events:none; transform:translate(-50%,-50%) scale(0);
       background: radial-gradient(circle, rgba(255,255,255,.9), rgba(255,255,255,.35) 40%, rgba(255,255,255,0) 60%);
-      mix-blend-mode: screen; opacity:.9;
-      animation: ripple .55s ease-out forwards;
+      mix-blend-mode: screen; opacity:.9; animation: ripple .55s ease-out forwards;
     }
     @keyframes ripple{ to{ transform:translate(-50%,-50%) scale(22); opacity:0; } }
-
-    /* 成功/失敗のグロー（外周が光る） */
-    .flash-ok{ animation: ok 200ms ease; }
-    .flash-ng{ animation: ng 220ms ease; }
+    .flash-ok{ animation: ok 200ms ease; } .flash-ng{ animation: ng 220ms ease; }
     @keyframes ok{ 50%{ box-shadow: 0 0 0 10px rgba(45,212,191,.22), 0 0 80px 16px rgba(45,212,191,.18);} }
     @keyframes ng{ 50%{ box-shadow: 0 0 0 10px rgba(239,68,68,.22), 0 0 80px 16px rgba(239,68,68,.18);} }
 
     /* ===== フッター ===== */
     .footer{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-    .btn{ border:1px solid var(--border); background:#131313; color:var(--fg); padding:10px 14px; border-radius:12px; font-weight:800; font-size:14px; cursor:pointer; }
+    .btn{ border:1px solid var(--border); background:#131313; color:var(--fg); padding:9px 12px; border-radius:12px; font-weight:800; font-size:13px; cursor:pointer; }
     .btn:active{ transform: translateY(1px); }
+    .author{ font-size:11px; color:var(--muted); opacity:.7; text-decoration:none; }
+    .author:hover{ opacity:.95; text-decoration:underline; }
 
-    /* ===== 勝利オーバーレイ（既存のゴージャス演出） ===== */
+    /* ===== 勝利オーバーレイ（既存ゴージャス） ===== */
     .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50; }
     .overlay.show{ display:flex; }
     .backdrop{
@@ -88,17 +101,16 @@
       box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 120px rgba(255,255,255,.08) inset;
     }
     .trophy{
-      font-size: clamp(26px, 8vw, 36px);
+      font-size: clamp(24px, 7vw, 34px);
       background: linear-gradient(90deg, #fff, #ffe08a, #fff);
       -webkit-background-clip:text; background-clip:text; color:transparent;
       text-shadow: 0 0 20px rgba(255,224,138,.15); font-weight:900;
       animation: shimmer 4s linear infinite;
     }
-    @keyframes shimmer{ 0%{filter:hue-rotate(0)} 100%{filter:hue-rotate(360deg)} }
     .stats{ color:var(--muted); margin:6px 0 10px; font-variant-numeric:tabular-nums; }
     .actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
-
     canvas.fx{ position:absolute; inset:0; pointer-events:none; z-index:0; filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); }
+
     @media (prefers-reduced-motion: reduce){
       .rip{ animation-duration:.01ms; }
       .flash-ok, .flash-ng{ animation-duration:.01ms; }
@@ -123,25 +135,26 @@
       <div class="chip" id="bestChip">自己ベスト: 1/2</div>
     </div>
 
-    <!-- 中央表示 -->
+    <!-- 中央（情報＋残りをボタンで満たす） -->
     <div class="center">
       <div class="prob" id="prob">1 / 2</div>
       <div class="info" id="info">連続成功: 0｜現在の一発確率: 1/2</div>
       <div class="goal" id="goal">ターゲット: 1/1024（メイン）</div>
-
-      <!-- 巨大ボタン -->
-      <button class="bigBtn" id="tryBtn" aria-label="タップ">
-        <span class="label">タップ</span>
-      </button>
+      <div class="btnWrap">
+        <button class="bigBtn" id="tryBtn" aria-label="タップ">
+          <span class="label">タップ</span>
+        </button>
+      </div>
     </div>
 
-    <!-- 下部操作 -->
+    <!-- フッター（作者リンクは最下段・小さく） -->
     <div class="footer">
       <button class="btn" id="resetBtn">↻ リセット（現在の挑戦のみ）</button>
       <div style="display:flex; gap:8px; align-items:center;">
         <button class="btn" id="soundBtn">🔊 効果音: ON</button>
         <button class="btn" id="vibeBtn">📳 バイブ: ON</button>
       </div>
+      <a class="author" href="https://x.com/rara_vrc" target="_blank" rel="me noopener noreferrer">作者: @rara_vrc</a>
     </div>
   </div>
 
@@ -179,17 +192,16 @@
     const TARGET_BONUS = 12;  // 1/4096
     const BTN = document.getElementById('tryBtn');
 
-    /* ====== 状態 ====== */
+    /* ====== 状態（localStorageキーは不変） ====== */
     let attempts = 0;     // ラウンド内クリック
-    let streak = 0;       // 連続成功
-    let inBonus = false;  // メイン超過フラグ
+    let streak   = 0;     // 連続成功
+    let inBonus  = false; // メイン超過
 
-    // ローカル累積（永続）
     let localAttempts  = Number(localStorage.getItem('localAttempts')  || 0);
     let localFails     = Number(localStorage.getItem('localFails')     || 0);
     let localClear1024 = Number(localStorage.getItem('localClear1024') || 0);
     let localClear4096 = Number(localStorage.getItem('localClear4096') || 0);
-    let bestPow        = Number(localStorage.getItem('bestPow')        || 1); // 最小分母=2^bestPow
+    let bestPow        = Number(localStorage.getItem('bestPow')        || 1);
 
     let soundOn = (localStorage.getItem('soundOn') ?? '1') === '1';
     let vibeOn  = (localStorage.getItem('vibeOn')  ?? '1') === '1';
@@ -223,7 +235,7 @@
     const shareUltra = document.getElementById('shareUltra');
     const fxUltra = document.getElementById('fxUltra');
 
-    /* ====== オーディオ：確実に鳴らす ====== */
+    /* ====== オーディオ ====== */
     let audioCtx = null, audioUnlocked = false;
     function ensureAudio(){
       if (!soundOn) return;
@@ -250,7 +262,6 @@
       osc.start(t0);
       osc.stop(t0 + ms/1000 + 0.04);
     }
-    // タップ即クリック音（短く高い音）
     function tapClick(){
       if (!soundOn || !audioCtx) return;
       const t0 = audioCtx.currentTime;
@@ -266,13 +277,13 @@
       osc.stop(t0 + 0.08);
     }
 
-    /* ====== 乱数（厳密な1/2） ====== */
+    /* ====== 厳密1/2判定 ====== */
     function fairCoin(){
       if (window.crypto && crypto.getRandomValues){
         const a = new Uint32Array(1); crypto.getRandomValues(a);
         return (a[0] >>> 0) < 0x80000000; // 2^31
       }
-      return Math.random() < 0.5; // フォールバック
+      return Math.random() < 0.5;
     }
 
     /* ====== 表示更新 ====== */
@@ -297,7 +308,7 @@
       updateLocalChips();
     }
 
-    /* ====== ビジュアル：リップル生成とグロー ====== */
+    /* ====== 視覚効果 ====== */
     function spawnRipple(e){
       const rect = BTN.getBoundingClientRect();
       const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
@@ -310,28 +321,25 @@
       s.addEventListener('animationend', ()=> s.remove());
     }
     function flash(ok){
-      BTN.classList.remove('flash-ok','flash-ng');
-      void BTN.offsetWidth; // reflow
+      BTN.classList.remove('flash-ok','flash-ng'); void BTN.offsetWidth;
       BTN.classList.add(ok ? 'flash-ok' : 'flash-ng');
     }
 
     /* ====== 判定 ====== */
     function judgeOnce(pointerEvent){
-      // UI/Audio 事前準備
-      ensureAudio(); unlockAudio(); // iOS対策
-      tapClick();                   // タップ即音
-      spawnRipple(pointerEvent);    // 光るリップル
+      ensureAudio(); unlockAudio();
+      tapClick();            // タップ即音
+      spawnRipple(pointerEvent);
 
-      // 記録
-      attempts++; localAttempts++; localStorage.setItem('localAttempts', String(localAttempts));
+      attempts++;
+      localAttempts++; localStorage.setItem('localAttempts', String(localAttempts));
       incrementGlobalTapCount(); // オンライン時のみ
 
-      // 判定
       const ok = fairCoin();
       if(ok){
         streak++;
         if(vibeOn && navigator.vibrate) navigator.vibrate(15);
-        beep(920 + streak*14, 80, 'triangle', 0.26); // 成功音
+        beep(920 + streak*14, 80, 'triangle', 0.26);
         flash(true);
 
         if(!inBonus && streak>=TARGET_MAIN){
@@ -347,7 +355,7 @@
       }else{
         localFails++; localStorage.setItem('localFails', String(localFails));
         if(vibeOn && navigator.vibrate) navigator.vibrate([10,30,60]);
-        beep(180, 120, 'sawtooth', 0.24);           // 失敗音
+        beep(180, 120, 'sawtooth', 0.24);
         flash(false);
         streak = 0;
       }
@@ -383,32 +391,25 @@
       }
       requestAnimationFrame(frame);
     }
-    function showWinMain(){
-      winMainStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`;
-      winMain.classList.add('show'); confetti(fxMain);
-    }
-    function showWinUltra(){
-      winUltraStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`;
-      winUltra.classList.add('show'); confetti(fxUltra, 5200, 300);
-    }
+    function showWinMain(){ winMainStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`; winMain.classList.add('show'); confetti(fxMain); }
+    function showWinUltra(){ winUltraStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`; winUltra.classList.add('show'); confetti(fxUltra, 5200, 300); }
 
     /* ====== イベント ====== */
     BTN.addEventListener('pointerdown', e => { e.preventDefault(); judgeOnce(e); }, {passive:false});
+    // ボタン上の縦スワイプを完全抑止
+    BTN.addEventListener('touchmove', e => { e.preventDefault(); }, {passive:false});
+
     resetBtn.addEventListener('click', ()=>{ attempts=0; streak=0; inBonus=false; updateUI(); });
     soundBtn.addEventListener('click', ()=>{ soundOn=!soundOn; localStorage.setItem('soundOn', soundOn?'1':'0'); if(soundOn){ ensureAudio(); unlockAudio(); } updateUI(); });
     vibeBtn.addEventListener('click', ()=>{ vibeOn=!vibeOn; localStorage.setItem('vibeOn', vibeOn?'1':'0'); updateUI(); });
 
+    async function shareText(text){
+      try{ if(navigator.share){ await navigator.share({text, url: location.href}); } else{ await navigator.clipboard.writeText(text + ' ' + location.href); } }catch(_){}
+    }
     shareMain.addEventListener('click', ()=> shareText(`1/1024 クリア！連続${streak}回`));
     shareUltra.addEventListener('click', ()=> shareText(`1/4096 クリア！連続${streak}回`));
     goBonus.addEventListener('click', ()=>{ winMain.classList.remove('show'); inBonus=true; updateUI(); });
     again.addEventListener('click', ()=>{ winUltra.classList.remove('show'); attempts=0; streak=0; inBonus=false; updateUI(); });
-
-    async function shareText(text){
-      try{
-        if(navigator.share){ await navigator.share({text, url: location.href}); }
-        else{ await navigator.clipboard.writeText(text + ' ' + location.href); }
-      }catch(_){ /* noop */ }
-    }
 
     /* ====== Firebase（CDN ESM, 匿名Auth + Realtime DB） ====== */
     let db=null, myUID=null, onlineUnsub=null, tapsUnsub=null;
@@ -433,7 +434,6 @@
         const app = initializeApp(firebaseConfig);
         db = getDatabase(app);
 
-        // 匿名サインイン
         const auth = getAuth(app);
         await signInAnonymously(auth);
         onAuthStateChanged(auth, (user) => {
@@ -443,12 +443,11 @@
           subscribeGlobalTaps();
         });
 
-        // presence（ユニークUID人数）
         function setupPresence(){
           const connectedRef = ref(db, '.info/connected');
           onValue(connectedRef, (snap) => {
             if (snap.val() === true && myUID){
-              const conRef = push(ref(db, `presence/${myUID}`)); // タブ単位
+              const conRef = push(ref(db, `presence/${myUID}`));
               onDisconnect(conRef).remove();
               set(conRef, serverTimestamp());
             }
@@ -465,7 +464,6 @@
           });
         }
 
-        // 総タップ購読
         function subscribeGlobalTaps(){
           if(tapsUnsub) tapsUnsub();
           tapsUnsub = onValue(ref(db, 'stats/tapCount'), (snap) => {
@@ -474,21 +472,18 @@
           });
         }
 
-        // 原子的+1
         window.__rtdbRunTransaction = (path, updater) => runTransaction(ref(db, path), updater);
-
       }catch(e){
         console.warn('Firebase 初期化に失敗（オンライン機能オフ）:', e);
       }
     }
 
-    // 総タップ +1
     async function incrementGlobalTapCount(){
       if(!window.__rtdbRunTransaction) return;
       try{ await window.__rtdbRunTransaction('stats/tapCount', (n)=> (n||0) + 1); }catch(_){}
     }
 
-    // 初期化
+    /* ====== 初期化 ====== */
     updateUI();
     initFirebase();
   </script>
