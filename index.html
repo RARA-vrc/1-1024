@@ -8,450 +8,210 @@
   <style>
     :root{
       --bg:#0c0c0c; --fg:#f5f5f5; --muted:#bdbdbd;
-      --card:#111; --border:#232323;
+      --border:#232323;
       --accent:#2dd4bf; --danger:#ef4444; --gold:#ffe08a;
-      --glow: 0 0 40px rgba(45,212,191,.25), 0 0 80px rgba(45,212,191,.15);
     }
     *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
     html,body{
       height:100%; margin:0; background:var(--bg); color:var(--fg);
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
     }
-    .app{
-      min-height:100svh; display:grid; grid-template-rows:auto auto 1fr auto;
+    .app{ min-height:100svh; display:grid; grid-template-rows:auto auto 1fr auto;
       gap:10px; padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 14px);
-      user-select:none; touch-action:manipulation;
-    }
+      user-select:none; touch-action:manipulation; }
 
-    /* HUD */
-    .hud{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; font-variant-numeric:tabular-nums; }
-    .title{ font-weight:800; letter-spacing:.02em; }
+    .hud{ display:grid; grid-template-columns:1fr auto auto; gap:8px; align-items:center; }
+    .title{ font-weight:800; }
     .chip{ border:1px solid var(--border); padding:6px 10px; border-radius:999px; font-size:14px; color:var(--muted); white-space:nowrap; }
-    .chips{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; }
 
-    /* 中央表示 */
     .center{ display:grid; place-items:center; text-align:center; gap:10px; }
-    .prob{ font-size: clamp(32px, 18vw, 124px); font-weight:900; letter-spacing:.02em; line-height:1.05; }
-    .info{ color:var(--muted); font-size: clamp(13px, 4.5vw, 18px); }
-    .goal{ color:var(--muted); font-size: clamp(12px, 4vw, 16px); }
+    .prob{ font-size: clamp(32px, 18vw, 124px); font-weight:900; }
+    .info,.goal{ color:var(--muted); }
 
-    /* 巨大ボタン（テキストは「タップ」だけ） */
     .bigBtn{
       width:100%; height:min(60vh,60svh);
       border-radius:20px; border:2px solid var(--border);
-      background:
-        radial-gradient(180% 140% at 80% -10%, #252525 0%, #181818 40%, #131313 70%, #101010 100%);
+      background: radial-gradient(180% 140% at 80% -10%, #252525 0%, #181818 40%, #131313 70%, #101010 100%);
       color:var(--fg); display:grid; place-items:center;
-      font-size: clamp(28px, 8vw, 44px); font-weight:900; letter-spacing:.08em;
-      box-shadow: 0 6px 18px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
-      transition: transform .02s ease, filter .08s ease;
+      font-size: clamp(28px, 8vw, 44px); font-weight:900;
       cursor:pointer;
     }
-    .bigBtn:active{ transform: translateY(1px) scale(.998); filter:brightness(1.02); }
+    .bigBtn:active{ transform:translateY(1px) scale(.998); filter:brightness(1.02); }
 
-    /* 下部操作 */
-    .footer{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
-    .btn{ border:1px solid var(--border); background:#131313; color:var(--fg); padding:10px 14px; border-radius:12px; font-weight:700; font-size:14px; cursor:pointer; }
-    .btn:active{ transform: translateY(1px); }
+    .footer{ display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .btn{ border:1px solid var(--border); background:#131313; color:var(--fg);
+      padding:10px 14px; border-radius:12px; font-weight:700; cursor:pointer; }
 
-    /* フラッシュ演出 */
     .flash-ok{ animation: ok 160ms ease; }  .flash-ng{ animation: ng 180ms ease; }
     @keyframes ok{ 50%{ box-shadow:0 0 0 6px rgba(45,212,191,.22), 0 0 60px 10px rgba(45,212,191,.18);} }
     @keyframes ng{ 50%{ box-shadow:0 0 0 6px rgba(239,68,68,.22), 0 0 60px 10px rgba(239,68,68,.18);} }
 
-    /* 勝利オーバーレイ（ゴージャス） */
     .overlay{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50; }
     .overlay.show{ display:flex; }
-    .backdrop{
-      position:absolute; inset:0;
+    .backdrop{ position:absolute; inset:0;
       background: radial-gradient(100% 130% at 50% 0%, rgba(0,0,0,.3), rgba(0,0,0,.85)),
-                  conic-gradient(from 180deg at 50% 50%, #0b132b, #1c2541, #3a506b, #5bc0be, #a5ffd6, #0b132b);
-      filter:saturate(1.2) brightness(.9);
-    }
-    .modal{
-      position:relative; z-index:1;
-      width:min(780px, 92vw);
-      background: linear-gradient(180deg, rgba(16,16,16,.9), rgba(10,10,10,.9));
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:20px; padding:18px;
-      text-align:center; box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 120px rgba(255,255,255,.08) inset;
-    }
-    .trophy{
-      font-size: clamp(26px, 8vw, 36px);
-      background: linear-gradient(90deg, #fff, #ffe08a, #fff);
-      -webkit-background-clip:text; background-clip:text; color:transparent;
-      text-shadow: 0 0 20px rgba(255,224,138,.15);
-      letter-spacing:.02em; font-weight:900;
-      animation: shimmer 4s linear infinite;
-    }
-    @keyframes shimmer{ 0%{filter:hue-rotate(0)} 100%{filter:hue-rotate(360deg)} }
-    .stats{ color:var(--muted); margin:6px 0 10px; font-variant-numeric:tabular-nums; }
-    .actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
-
-    /* 紙吹雪Canvas */
-    canvas.fx{ position:absolute; inset:0; pointer-events:none; z-index:0; filter: drop-shadow(0 4px 10px rgba(0,0,0,.4)); }
-
-    /* 小さな説明枠 */
-    details{ margin-top:10px; border:1px solid var(--border); border-radius:12px; padding:10px 12px; color:var(--muted); }
-    summary{ cursor:pointer; color:var(--fg); font-weight:700; }
-    code{ background:#151515; padding:1px 6px; border-radius:6px; }
+                  conic-gradient(from 180deg at 50% 50%, #0b132b, #1c2541, #3a506b, #5bc0be, #a5ffd6, #0b132b); }
+    .modal{ position:relative; z-index:1; width:min(780px, 92vw); background:rgba(10,10,10,.9);
+      border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:18px; text-align:center; }
+    .trophy{ font-size:clamp(26px, 8vw, 36px); font-weight:900; background:linear-gradient(90deg,#fff,#ffe08a,#fff);
+      -webkit-background-clip:text; color:transparent; }
+    canvas.fx{ position:absolute; inset:0; pointer-events:none; z-index:0; }
   </style>
 </head>
 <body>
   <div class="app" id="app">
-    <!-- HUD（左はシンプルに 1/1024） -->
     <div class="hud">
       <div class="title">1/1024</div>
       <div class="chip" id="globalTaps">総タップ: —</div>
       <div class="chip" id="online">同時プレイ: —</div>
     </div>
-
-    <!-- ローカル統計（リアルタイム更新・localStorageに保存） -->
-    <div class="chips" id="localStats">
+    <div class="chips">
       <div class="chip" id="localAttempts">試行: 0</div>
       <div class="chip" id="localFails">失敗: 0</div>
       <div class="chip" id="localClear1024">1/1024達成: 0</div>
       <div class="chip" id="localClear4096">1/4096達成: 0</div>
       <div class="chip" id="bestChip">自己ベスト: 1/2</div>
     </div>
-
-    <!-- 中央表示 -->
     <div class="center">
       <div class="prob" id="prob">1 / 2</div>
       <div class="info" id="info">連続成功: 0｜現在の一発確率: 1/2</div>
       <div class="goal" id="goal">ターゲット: 1/1024（メイン）</div>
-
-      <button class="bigBtn" id="tryBtn" aria-label="タップ">タップ</button>
+      <button class="bigBtn" id="tryBtn">タップ</button>
     </div>
-
-    <!-- 下部操作 -->
     <div class="footer">
-      <button class="btn" id="resetBtn">↻ リセット（現在の挑戦のみ）</button>
-      <div style="display:flex; gap:8px; align-items:center;">
+      <button class="btn" id="resetBtn">↻ リセット</button>
+      <div>
         <button class="btn" id="soundBtn">🔊 効果音: ON</button>
         <button class="btn" id="vibeBtn">📳 バイブ: ON</button>
       </div>
     </div>
   </div>
 
-  <!-- 1/1024 クリア用オーバーレイ -->
   <div class="overlay" id="winMain">
-    <div class="backdrop"></div>
-    <canvas class="fx" id="fxMain"></canvas>
+    <div class="backdrop"></div><canvas class="fx" id="fxMain"></canvas>
     <div class="modal">
       <div class="trophy">CLEAR! 1/1024 達成</div>
-      <div class="stats" id="winMainStats">総タップ: 0｜連続成功: 10</div>
-      <div class="actions">
-        <button class="btn" id="goBonus">🎯 続けて 1/4096 へ</button>
-        <button class="btn" id="shareMain">🔗 結果を共有</button>
-      </div>
-      <details>
-        <summary>判定の根拠</summary>
-        <p>成功判定は <code>crypto.getRandomValues</code> で生成した一様32bit整数 <code>X</code> に対し「<code>X &lt; 2³¹</code>」を成功とする → 1/2 が厳密。連続10回成功で 1/1024 = (1/2)¹⁰。12回まで続ければ 1/4096 だ。</p>
-      </details>
+      <div class="stats" id="winMainStats"></div>
+      <button class="btn" id="goBonus">🎯 続けて 1/4096 へ</button>
     </div>
   </div>
-
-  <!-- 1/4096 クリア用オーバーレイ -->
   <div class="overlay" id="winUltra">
-    <div class="backdrop"></div>
-    <canvas class="fx" id="fxUltra"></canvas>
+    <div class="backdrop"></div><canvas class="fx" id="fxUltra"></canvas>
     <div class="modal">
       <div class="trophy">ULTRA CLEAR! 1/4096 達成</div>
-      <div class="stats" id="winUltraStats">総タップ: 0｜連続成功: 12</div>
-      <div class="actions">
-        <button class="btn" id="again">↺ もう一度（最初から）</button>
-        <button class="btn" id="shareUltra">🔗 結果を共有</button>
-      </div>
+      <div class="stats" id="winUltraStats"></div>
+      <button class="btn" id="again">↺ もう一度</button>
     </div>
   </div>
 
   <script type="module">
-    /* ====== 定数 ====== */
-    const TARGET_MAIN = 10;   // 1/1024
-    const TARGET_BONUS = 12;  // 1/4096
-    const BTN = document.getElementById('tryBtn');
+    const TARGET_MAIN=10, TARGET_BONUS=12;
+    let attempts=0, streak=0, inBonus=false;
+    let localAttempts=+localStorage.localAttempts||0,
+        localFails=+localStorage.localFails||0,
+        localClear1024=+localStorage.localClear1024||0,
+        localClear4096=+localStorage.localClear4096||0,
+        bestPow=+localStorage.bestPow||1;
+    let soundOn=(localStorage.soundOn??'1')==='1',
+        vibeOn=(localStorage.vibeOn??'1')==='1';
 
-    /* ====== 状態 ====== */
-    let attempts = 0;     // 現在ラウンドの総クリック
-    let streak = 0;       // 現在の連続成功
-    let inBonus = false;  // メインを超えたら true
+    const probEl=document.getElementById('prob'),
+          infoEl=document.getElementById('info'),
+          goalEl=document.getElementById('goal'),
+          localAttemptsEl=document.getElementById('localAttempts'),
+          localFailsEl=document.getElementById('localFails'),
+          localClear1024El=document.getElementById('localClear1024'),
+          localClear4096El=document.getElementById('localClear4096'),
+          bestChipEl=document.getElementById('bestChip'),
+          globalTapsEl=document.getElementById('globalTaps'),
+          onlineEl=document.getElementById('online');
 
-    // ローカル累積（永続）記録
-    let localAttempts = Number(localStorage.getItem('localAttempts') || 0);
-    let localFails    = Number(localStorage.getItem('localFails') || 0);
-    let localClear1024= Number(localStorage.getItem('localClear1024') || 0);
-    let localClear4096= Number(localStorage.getItem('localClear4096') || 0);
-    let bestPow       = Number(localStorage.getItem('bestPow') || 1); // 最小分母=2^bestPow
-
-    let soundOn = (localStorage.getItem('soundOn') ?? '1') === '1';
-    let vibeOn  = (localStorage.getItem('vibeOn')  ?? '1') === '1';
-
-    /* ====== DOM ====== */
-    const probEl   = document.getElementById('prob');
-    const infoEl   = document.getElementById('info');
-    const goalEl   = document.getElementById('goal');
-    const resetBtn = document.getElementById('resetBtn');
-    const soundBtn = document.getElementById('soundBtn');
-    const vibeBtn  = document.getElementById('vibeBtn');
-
-    const globalTapsEl = document.getElementById('globalTaps');
-    const onlineEl     = document.getElementById('online');
-
-    const localAttemptsEl = document.getElementById('localAttempts');
-    const localFailsEl    = document.getElementById('localFails');
-    const localClear1024El= document.getElementById('localClear1024');
-    const localClear4096El= document.getElementById('localClear4096');
-    const bestChipEl      = document.getElementById('bestChip');
-
-    const winMain = document.getElementById('winMain');
-    const winMainStats = document.getElementById('winMainStats');
-    const goBonus = document.getElementById('goBonus');
-    const shareMain = document.getElementById('shareMain');
-    const fxMain = document.getElementById('fxMain');
-
-    const winUltra = document.getElementById('winUltra');
-    const winUltraStats = document.getElementById('winUltraStats');
-    const again = document.getElementById('again');
-    const shareUltra = document.getElementById('shareUltra');
-    const fxUltra = document.getElementById('fxUltra');
-
-    /* ====== オーディオ ====== */
-    let audioCtx = null;
-    function ensureAudio(){ if(!soundOn) return; if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ audioCtx=null; } } }
-    function beep(freq=880, ms=80, type='sine'){
-      if(!soundOn || !audioCtx) return;
-      const t0 = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      osc.type = type; osc.frequency.setValueAtTime(freq, t0);
-      osc.connect(g).connect(audioCtx.destination);
-      g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(0.25, t0+0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + ms/1000);
-      osc.start(t0); osc.stop(t0 + ms/1000 + 0.02);
-    }
-
-    /* ====== 乱数（厳密な1/2） ====== */
-    function fairCoin(){
-      if (window.crypto && crypto.getRandomValues){
-        const a = new Uint32Array(1); crypto.getRandomValues(a);
-        return (a[0] >>> 0) < 0x80000000; // 2^31
-      }
-      return Math.random() < 0.5; // フォールバック
-    }
-
-    /* ====== 表示更新 ====== */
-    const pow2 = n => 2 ** n;
-    function updateLocalChips(){
-      localAttemptsEl.textContent  = `試行: ${localAttempts}`;
-      localFailsEl.textContent     = `失敗: ${localFails}`;
-      localClear1024El.textContent = `1/1024達成: ${localClear1024}`;
-      localClear4096El.textContent = `1/4096達成: ${localClear4096}`;
-      bestChipEl.textContent       = `自己ベスト: 1/${pow2(Math.max(bestPow,1))}`;
-    }
     function updateUI(){
-      const target = inBonus ? TARGET_BONUS : TARGET_MAIN;
-      const nextPow = Math.min(streak + 1, target);
-      const denom = pow2(nextPow);
-      probEl.textContent = `1 / ${denom}`;
-      infoEl.textContent = `連続成功: ${streak}｜現在の一発確率: 1/${denom}`;
-      goalEl.textContent = `ターゲット: ${inBonus ? '1/4096（ボーナス）' : '1/1024（メイン）'}`;
-      soundBtn.textContent = `🔊 効果音: ${soundOn ? 'ON' : 'OFF'}`;
-      vibeBtn.textContent  = `📳 バイブ: ${vibeOn ? 'ON' : 'OFF'}`;
-      document.title = (streak>0?`連続${streak} ▶ `:'') + '1/1024';
-      updateLocalChips();
+      const t=inBonus?TARGET_BONUS:TARGET_MAIN;
+      const next=Math.min(streak+1,t), denom=2**next;
+      probEl.textContent=`1 / ${denom}`;
+      infoEl.textContent=`連続成功: ${streak}｜現在の一発確率: 1/${denom}`;
+      goalEl.textContent=`ターゲット: ${inBonus?'1/4096':'1/1024'}`;
+      localAttemptsEl.textContent=`試行: ${localAttempts}`;
+      localFailsEl.textContent=`失敗: ${localFails}`;
+      localClear1024El.textContent=`1/1024達成: ${localClear1024}`;
+      localClear4096El.textContent=`1/4096達成: ${localClear4096}`;
+      bestChipEl.textContent=`自己ベスト: 1/${2**bestPow}`;
     }
-    function flash(ok){ BTN.classList.remove('flash-ok','flash-ng'); void BTN.offsetWidth; BTN.classList.add(ok?'flash-ok':'flash-ng'); }
 
-    /* ====== 1回判定 ====== */
-    function judgeOnce(){
-      attempts++;
-      localAttempts++; localStorage.setItem('localAttempts', String(localAttempts));
-      ensureAudio();
-      incrementGlobalTapCount(); // オンライン時のみ
-
-      const ok = fairCoin();
+    function fairCoin(){const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]<0x80000000;}
+    function judge(){
+      attempts++; localAttempts++; localStorage.localAttempts=localAttempts;
+      const ok=fairCoin();
       if(ok){
         streak++;
-        if(vibeOn && navigator.vibrate) navigator.vibrate(20);
-        beep(900 + streak*12, 70, 'triangle');
-        flash(true);
-
-        if(!inBonus && streak>=TARGET_MAIN){
-          // 1/1024 クリア
-          localClear1024++; localStorage.setItem('localClear1024', String(localClear1024));
-          bestPow = Math.max(bestPow, TARGET_MAIN);
-          localStorage.setItem('bestPow', String(bestPow));
-          showWinMain();
-          updateUI();
-          return;
-        }
-        if(inBonus && streak>=TARGET_BONUS){
-          // 1/4096 クリア
-          localClear4096++; localStorage.setItem('localClear4096', String(localClear4096));
-          bestPow = Math.max(bestPow, TARGET_BONUS);
-          localStorage.setItem('bestPow', String(bestPow));
-          showWinUltra();
-          updateUI();
-          return;
-        }
-      }else{
-        localFails++; localStorage.setItem('localFails', String(localFails));
-        if(vibeOn && navigator.vibrate) navigator.vibrate([12,35,90]);
-        beep(180, 120, 'sawtooth');
-        flash(false);
-        streak = 0;
-      }
-      bestPow = Math.max(bestPow, Math.min(streak, TARGET_BONUS));
-      localStorage.setItem('bestPow', String(bestPow));
-      updateUI();
+        if(!inBonus&&streak>=TARGET_MAIN){localClear1024++;localStorage.localClear1024=localClear1024;bestPow=Math.max(bestPow,TARGET_MAIN);localStorage.bestPow=bestPow;document.getElementById('winMain').classList.add('show');}
+        if(inBonus&&streak>=TARGET_BONUS){localClear4096++;localStorage.localClear4096=localClear4096;bestPow=Math.max(bestPow,TARGET_BONUS);localStorage.bestPow=bestPow;document.getElementById('winUltra').classList.add('show');}
+      }else{streak=0;localFails++;localStorage.localFails=localFails;}
+      bestPow=Math.max(bestPow,Math.min(streak,TARGET_BONUS));
+      localStorage.bestPow=bestPow;updateUI();incrementGlobalTap();
     }
 
-    /* ====== 勝利演出 ====== */
-    function confetti(canvas, durationMs=4200, count=220){
-      const ctx = canvas.getContext('2d');
-      const {width:W, height:H} = canvas.getBoundingClientRect();
-      canvas.width = W * devicePixelRatio; canvas.height = H * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio);
-      const pieces = Array.from({length:count}, () => ({
-        x: Math.random()*W, y: -20 - Math.random()*H,
-        w: 6+Math.random()*7, h: 10+Math.random()*14,
-        vy: 2+Math.random()*3, vx:(Math.random()-.5)*1.2, rot:Math.random()*Math.PI, vr:(Math.random()-.5)*0.2,
-      }));
-      const colors = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#B892FF','#F6C177','#2DD4BF','#E879F9'];
-      let start = performance.now();
-      function frame(t){
-        const elapsed = t - start;
-        ctx.clearRect(0,0,W,H);
-        for(const p of pieces){
-          p.x += p.vx; p.y += p.vy; p.rot += p.vr;
-          if(p.y > H+40) { p.y = -20; p.x = Math.random()*W; }
-          ctx.save();
-          ctx.translate(p.x,p.y); ctx.rotate(p.rot);
-          ctx.fillStyle = colors[(p.x^p.y + p.w|0) % colors.length];
-          ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-          ctx.restore();
-        }
-        if(elapsed < durationMs) requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
-    }
-    function showWinMain(){
-      winMainStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`;
-      winMain.classList.add('show');
-      confetti(fxMain);
-    }
-    function showWinUltra(){
-      winUltraStats.textContent = `総タップ: ${attempts}｜連続成功: ${streak}`;
-      winUltra.classList.add('show');
-      confetti(fxUltra, 5200, 300);
-    }
+    document.getElementById('tryBtn').onclick=()=>judge();
+    document.getElementById('resetBtn').onclick=()=>{attempts=0;streak=0;inBonus=false;updateUI();};
+    document.getElementById('goBonus').onclick=()=>{document.getElementById('winMain').classList.remove('show');inBonus=true;};
+    document.getElementById('again').onclick=()=>{document.getElementById('winUltra').classList.remove('show');attempts=0;streak=0;inBonus=false;updateUI();};
 
-    /* ====== イベント ====== */
-    BTN.addEventListener('pointerdown', e => { e.preventDefault(); judgeOnce(); }, {passive:false});
-    resetBtn.addEventListener('click', ()=>{ attempts=0; streak=0; inBonus=false; updateUI(); });
-    soundBtn.addEventListener('click', ()=>{ soundOn=!soundOn; localStorage.setItem('soundOn', soundOn?'1':'0'); if(soundOn) ensureAudio(); updateUI(); });
-    vibeBtn.addEventListener('click', ()=>{ vibeOn=!vibeOn; localStorage.setItem('vibeOn', vibeOn?'1':'0'); updateUI(); });
-
-    goBonus.addEventListener('click', ()=>{ winMain.classList.remove('show'); inBonus=true; updateUI(); });
-    again.addEventListener('click', ()=>{ winUltra.classList.remove('show'); attempts=0; streak=0; inBonus=false; updateUI(); });
-
-    async function shareText(text){
-      try{
-        if(navigator.share){ await navigator.share({text, url: location.href}); }
-        else{ await navigator.clipboard.writeText(text + ' ' + location.href); }
-      }catch(_){ /* noop */ }
-    }
-    shareMain.addEventListener('click', ()=> shareText(`1/1024 クリア！連続${streak}回`));
-    shareUltra.addEventListener('click', ()=> shareText(`1/4096 クリア！連続${streak}回`));
-
-    /* ====== Firebase（CDN ESM, 匿名Auth + Realtime Database） ====== */
-    let db=null, myUID=null, onlineUnsub=null, tapsUnsub=null;
-
+    // === Firebase ===
+    let db,myUID;
     async function initFirebase(){
-      // 自前プロジェクトの設定をここに貼る（Firebaseコンソール > プロジェクト設定 > SDKスニペット）
-      const firebaseConfig = {
-        // TODO: ここに自分の Firebase 設定を書く（apiKey / authDomain / databaseURL / projectId / appId など）
-        // 例:
-        // apiKey: "AIzaSy....",
-        // authDomain: "yourapp.firebaseapp.com",
-        // databaseURL: "https://yourapp-default-rtdb.asia-southeast1.firebasedatabase.app",
-        // projectId: "yourapp",
-        // appId: "1:1234567890:web:abcd..."
+      const firebaseConfig={
+        apiKey:"AIzaSyDtdpDv3rduha4z6OGkQrRYCMNDuKcVBLk",
+        authDomain:"project-4739003489934004266.firebaseapp.com",
+        projectId:"project-4739003489934004266",
+        storageBucket:"project-4739003489934004266.firebasestorage.app",
+        messagingSenderId:"599571252669",
+        appId:"1:599571252669:web:7e321aacd113b5df4dfed4",
+        measurementId:"G-VW1NRCTKWR",
+        databaseURL:"https://project-4739003489934004266-default-rtdb.asia-southeast1.firebasedatabase.app"
       };
-      // 設定未入力ならオンライン機能はスキップ
-      if(!firebaseConfig || !firebaseConfig.apiKey){ return; }
-
-      try{
-        const [{ initializeApp }, { getAuth, signInAnonymously, onAuthStateChanged }, { getDatabase, ref, onValue, push, set, onDisconnect, serverTimestamp, runTransaction }] =
-          await Promise.all([
-            import('https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js'),
-            import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js'),
-            import('https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js'),
-          ]);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        db = getDatabase(app);
-
-        // 匿名サインイン
-        await signInAnonymously(auth);
-        onAuthStateChanged(auth, (user) => {
-          if(!user) return;
-          myUID = user.uid;
-          setupPresence();
-          subscribeGlobalTaps();
-        });
-
-        // presence（ユニークUID人数を集計）
-        function setupPresence(){
-          const connectedRef = ref(db, '.info/connected');
-          onValue(connectedRef, (snap) => {
-            if (snap.val() === true && myUID){
-              const conRef = push(ref(db, `presence/${myUID}`)); // タブごとの接続ノード
-              onDisconnect(conRef).remove();
-              set(conRef, serverTimestamp());
-            }
-          });
-          if(onlineUnsub) onlineUnsub();
-          onlineUnsub = onValue(ref(db, 'presence'), (snap) => {
-            const val = snap.val() || {};
-            let unique = 0;
-            for(const uid in val){
-              const count = val[uid] ? Object.keys(val[uid]).length : 0;
-              if(count > 0) unique++;
-            }
-            onlineEl.textContent = `同時プレイ: ${unique}`;
-          });
-        }
-
-        // 総タップ購読
-        function subscribeGlobalTaps(){
-          if(tapsUnsub) tapsUnsub();
-          tapsUnsub = onValue(ref(db, 'stats/tapCount'), (snap) => {
-            const n = snap.val() || 0;
-            globalTapsEl.textContent = `総タップ: ${n}`;
-          });
-        }
-
-        // グローバルカウンタの transaction を公開
-        window.__rtdbRunTransaction = (path, updater) => runTransaction(ref(db, path), updater);
-
-      }catch(e){
-        console.warn('Firebase 初期化に失敗（オフライン機能のみ動作）:', e);
-      }
+      const [{initializeApp},{getAuth,signInAnonymously,onAuthStateChanged},{getDatabase,ref,onValue,push,set,onDisconnect,serverTimestamp,runTransaction}] =
+        await Promise.all([
+          import('https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js'),
+          import('https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js'),
+          import('https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js')
+        ]);
+      const app=initializeApp(firebaseConfig);
+      db=getDatabase(app);
+      const auth=getAuth(app);
+      await signInAnonymously(auth);
+      onAuthStateChanged(auth,(user)=>{
+        if(!user)return; myUID=user.uid; setupPresence(ref,onValue,push,set,onDisconnect,serverTimestamp); subscribeTaps(ref,onValue);
+      });
+      window.__rtdbRunTransaction=(p,u)=>runTransaction(ref(db,p),u);
     }
 
-    // グローバル総タップ +1（Firebase接続していなければ何もしない）
-    async function incrementGlobalTapCount(){
-      if(!window.__rtdbRunTransaction) return;
-      try{
-        await window.__rtdbRunTransaction('stats/tapCount', (n)=> (n||0) + 1);
-      }catch(e){ /* noop */ }
+    function setupPresence(ref,onValue,push,set,onDisconnect,serverTimestamp){
+      const cRef=ref(db,'.info/connected');
+      onValue(cRef,(s)=>{
+        if(s.val()===true&&myUID){
+          const con=push(ref(db,'presence/'+myUID));
+          onDisconnect(con).remove(); set(con,serverTimestamp());
+        }
+      });
+      onValue(ref(db,'presence'),(snap)=>{
+        let unique=0;const v=snap.val()||{};
+        for(const uid in v){if(Object.keys(v[uid]||{}).length>0)unique++;}
+        onlineEl.textContent=`同時プレイ: ${unique}`;
+      });
+    }
+    function subscribeTaps(ref,onValue){
+      onValue(ref(db,'stats/tapCount'),(snap)=>{
+        globalTapsEl.textContent=`総タップ: ${snap.val()||0}`;
+      });
+    }
+    async function incrementGlobalTap(){
+      if(!window.__rtdbRunTransaction)return;
+      await window.__rtdbRunTransaction('stats/tapCount',(n)=>(n||0)+1);
     }
 
-    // 初期化
-    updateUI();
-    initFirebase();
+    updateUI(); initFirebase();
   </script>
 </body>
 </html>
